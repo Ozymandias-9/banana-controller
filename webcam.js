@@ -44,9 +44,11 @@ function processCamera() {
     // var yellowestPx = null;
     // var lowestDistance = null;
 
-    var sumaX = 0;
-    var sumaY = 0;
-    var cuenta = 0;
+    // var sumaX = 0;
+    // var sumaY = 0;
+    // var cuenta = 0;
+
+    var bananas = [];
 
     for (var p = 0; p < pixels.length; p+=4) {
         var red = pixels[p];
@@ -61,18 +63,42 @@ function processCamera() {
         )
 
         if (distance < acceptableDistance) {
-            pixels[p] = 255;
-            pixels[p + 1] = 0;
-            pixels[p + 2] = 0;
+            // pixels[p] = 255;
+            // pixels[p + 1] = 0;
+            // pixels[p + 2] = 0;
 
-            cuenta++;
+            // cuenta++;
 
             var x = (p / 4) % canvas.width;
             var y = Math.floor(p / 4 / canvas.width);
 
-            sumaX += x;
-            sumaY += y;
-            cuenta++;
+            if (bananas.length == 0) {
+                var banana = new Banana(x, y);
+                bananas.push(banana);
+            } else {
+                var found = false;
+                for (var pl = 0; pl < bananas.length; pl++) {
+                    if (bananas[pl].isNear(x, y)) {
+                        bananas[pl].addPixel(x, y);
+
+                        found = true;
+
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    var banana = new Banana(x, y);
+
+                    bananas.push(banana);
+                }
+            }
+
+            // sumaX += x;
+            // sumaY += y;
+            // cuenta++;
+        } else {
+
         }
 
         // if (lowestDistance == null || distance < lowestDistance) {
@@ -87,12 +113,64 @@ function processCamera() {
 
     ctx.putImageData(imgData, 0, 0);
 
-    if (cuenta > 0) {
-        ctx.fillStyle = "#00f";
-        ctx.beginPath();
-        ctx.arc(sumaX/cuenta, sumaY/cuenta, 10, 0, 2*Math.PI);
-		ctx.fill();
+    bananas = joinBananas(bananas);
+
+    for (var pl = 0; pl < bananas.length; pl++) {
+        var width = bananas[pl].maxX - bananas[pl].minX;
+        var height = bananas[pl].maxY - bananas[pl].minY;
+        var area = width * height;
+
+        if (area > 1500) {
+            bananas[pl].draw(ctx);
+        }
     }
 
+    console.log(bananas);
+
+    // if (cuenta > 0) {
+    //     ctx.fillStyle = "#00f";
+    //     ctx.beginPath();
+    //     ctx.arc(sumaX/cuenta, sumaY/cuenta, 10, 0, 2*Math.PI);
+	// 	ctx.fill();
+    // }
+
     setTimeout(processCamera, 20);
+}
+
+function joinBananas(bananas) {
+    var exit = false;
+
+    for (var p1 = 0; p1< bananas.length; p1++) {
+        for (var p2 = 0; p2< bananas.length; p2++) {
+            if (p1 == p2) continue
+
+            var banana1 = bananas[p1];
+            var banana2 = bananas[p2];
+
+            var bananasIntersect = banana1.minX < banana2.maxX &&
+                banana1.maxX && banana2.minX &&
+                banana1.minY && banana2.maxY &&
+                banana1.maxY && banana2.minY;
+            
+            if (bananasIntersect) {
+                for (var p = 0 ; p < banana2.pixels.length; p++) {
+                    banana1.addPixel(banana2.pixels[p].x, banana2.pixels[p].y);
+                }
+
+                bananas.splice(p2, 1);
+                exit = true;
+                break;
+            }
+        }
+
+        if (exit) {
+            break;
+        }
+    }
+
+    if (exit) {
+        return joinBananas(bananas);
+    } else {
+        return bananas;
+    }
 }
